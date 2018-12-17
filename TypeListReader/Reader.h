@@ -1,5 +1,5 @@
 //
-//  Reader.hpp
+//  Reader.h
 //  Reader
 //
 //  Created by Дмитрий Ткаченко on 16/12/2018.

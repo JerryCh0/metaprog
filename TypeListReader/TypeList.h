@@ -10,7 +10,14 @@
 #ifndef TypeList_h
 #define TypeList_h
 
-class NullType {};
+class NullType {
+public:
+    static void* decompress(void* compressed) { return compressed; }
+    
+    friend std::ostream& operator<<(std::ostream& os, const NullType& NullType_) {
+        return os;
+    }
+};
 
 template<typename ... T>
 struct TypeList {
@@ -227,6 +234,7 @@ void dumpToBuffer(std::ifstream &inputStream, BufferBasicType* buffer) {
 template <>
 void dumpToBuffer<EmptyTypeList>(std::ifstream &inputStream, BufferBasicType* buffer) {}
 
+
 // Printing buffer
 template<typename TL>
 void printBuffer(void *buffer) {
@@ -237,5 +245,66 @@ void printBuffer(void *buffer) {
 
 template<>
 void printBuffer<EmptyTypeList>(void *buffer) { std::cout << std::endl; }
+
+// -----     Additional logic for Reader stage 2 task    -------------
+
+#include "Decompressor.h"
+
+typedef int UniversalCompressedType;
+
+// Decompressing into buffer
+template<typename FileTL, typename DecompressedTL, typename DecompressorsTL>
+void decompressToBuffer(std::ifstream &inputStream, BufferBasicType* buffer) {
+    typedef typename TypeAt<0, FileTL>::type compressedType;
+    typedef typename TypeAt<0, DecompressedTL>::type decompressedType;
+    typedef typename TypeAt<0, DecompressorsTL>::type decompressorType;
+    
+    compressedType* tmp = new compressedType;
+    
+    inputStream >> *tmp;
+    
+    if (std::is_same<decompressedType, NullType>::value) {
+        *buffer = *((BufferBasicType*)decompressorType::decompress(tmp));
+        decompressToBuffer<typename FileTL::Tail, typename  DecompressedTL::Tail, typename DecompressorsTL::Tail>(inputStream, buffer + sizeof(UniversalCompressedType));
+    } else {
+        *buffer = *((BufferBasicType*)decompressedType::decompress(tmp));
+        decompressToBuffer<typename FileTL::Tail, typename DecompressedTL::Tail, typename DecompressorsTL::Tail>(inputStream, buffer + sizeof(decompressedType));
+    }
+}
+
+template<>
+void decompressToBuffer<EmptyTypeList, EmptyTypeList, EmptyTypeList>(std::ifstream &inputStream, BufferBasicType* buffer) {}
+
+// Boosted Memsize
+template<typename DecompressedTL, typename DecompressorsTL>
+struct BoostedMemSize {
+    enum {
+        value = (std::is_same<typename DecompressedTL::Head, NullType>::value) ? sizeof(UniversalCompressedType) + BoostedMemSize<typename DecompressedTL::Tail, typename DecompressorsTL::Tail>::value : sizeof(typename DecompressedTL::Head) + BoostedMemSize<typename DecompressedTL::Tail, typename DecompressorsTL::Tail>::value
+    };
+};
+
+template <>
+struct BoostedMemSize<EmptyTypeList, EmptyTypeList> {
+    enum {
+        value = 0
+    };
+};
+
+// Boosted Printing buffer
+template<typename DecompressedTL, typename DecompressorsTL>
+void boostedPrintBuffer(void *buffer) {
+    typedef typename TypeAt<0, DecompressedTL>::type decompressedType;
+    typedef typename TypeAt<0, DecompressorsTL>::type decompressorType;
+    if (std::is_same<decompressedType, NullType>::value) {
+        std::cout << *((UniversalCompressedType*) buffer) << " ";
+        boostedPrintBuffer<typename DecompressedTL::Tail, typename DecompressorsTL::Tail>((BufferBasicType*)buffer + sizeof(UniversalCompressedType));
+    } else {
+        std::cout << *((decompressedType*) buffer) << " ";
+        boostedPrintBuffer<typename DecompressedTL::Tail, typename DecompressorsTL::Tail>((BufferBasicType*)buffer + sizeof(decompressedType));
+    }
+}
+
+template<>
+void boostedPrintBuffer<EmptyTypeList, EmptyTypeList>(void *buffer) { std::cout << std::endl; }
 
 #endif /* TypeList_h */

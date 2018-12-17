@@ -7,13 +7,25 @@
 //
 
 #include <iostream>
-#include "Reader.hpp"
+#include "Reader.h"
+#include "Stage2Reader.h"
 
-typedef TypeList<int, char, float> MyList;
+typedef TypeList<int, char, float> Stage1List;
+
+typedef TypeList<float, int, char> FileTL;
+typedef TypeList<Int, Char, NullType> DecompressedTL;
+typedef TypeList<NoDecompressor, NoDecompressor, Decompressor<char, int>> DecompressorsTL;
 
 int main(int argc, const char * argv[]) {
-    Reader<MyList>* reader = new Reader<MyList>;
-    printBuffer<MyList>(reader->readNextLine());
-    printBuffer<MyList>(reader->readNextLine());
-    printBuffer<MyList>(reader->readNextLine());
+    
+    std::cout << "Stage 1 test:\n";
+    Reader<Stage1List>* reader = new Reader<Stage1List>;
+    printBuffer<Stage1List>(reader->readNextLine());
+    printBuffer<Stage1List>(reader->readNextLine());
+    printBuffer<Stage1List>(reader->readNextLine());
+    
+    std::cout << "\n\nStage 2 test:\n";
+    auto stage2Reader = new Stage2Reader<FileTL, DecompressedTL, DecompressorsTL>;
+    boostedPrintBuffer<DecompressedTL, DecompressorsTL>(stage2Reader->readNextLine());
+    boostedPrintBuffer<DecompressedTL, DecompressorsTL>(stage2Reader->readNextLine());
 }
